@@ -10,6 +10,8 @@
 
 using namespace std;
 
+pthread_mutex_t mutex;
+
 /* timer */
 double read_timer() {
     static bool initialized = false;
@@ -72,13 +74,17 @@ bool palindromCheck (string str, vector<string> vec, vector<string>& res) {
     string reverse = reverseString(str);
 
     if(reverse == str){
+        pthread_mutex_lock(&mutex);
         res.push_back(str);
+        pthread_mutex_unlock(&mutex);
         return true;
     }
 
     for(int i = 0; i < vec.size(); i++) {
         if(reverse == vec.at(i)) {
-            res.push_back(str);
+            pthread_mutex_lock(&mutex);
+                res.push_back(str);
+            pthread_mutex_unlock(&mutex);
             return true;
         }
     }
@@ -86,8 +92,65 @@ bool palindromCheck (string str, vector<string> vec, vector<string>& res) {
     return false;
 }
 
-int main() {
+ typedef struct THARGS{
+    int index;
+    vector<string> vec;
+    vector<string> &res;
+    int start;
+    int end;
+    int &tot;
+} thArgs;
+
+void *multiSearch (void *args) {
+    thArgs *th_args = (thArgs*)args;
+
+    int total;
+
+    for(int i = th_args->start; i < th_args->end; i++) {
+        if(palindromCheck(th_args->vec.at(i), th_args->vec, th_args->res)) {
+            total++;
+        }
+    }
+
+    cout << "Thread " << th_args->index << " found a total of " << total << " palindromes" << "\n";
+
+    pthread_mutex_lock(&mutex);
+        th_args->tot += total;
+    pthread_mutex_unlock(&mutex);
+
+    return 0;
+}
+
+void multiThreadSearch (vector<string> &vec, vector<string> &res, int totThreads, int &tot) {
+    pthread_t th[totThreads];
+    thArgs *args[totThreads];
+
+    int vecSizePerTh = (int)vec.size()/totThreads;
+
+    pthread_mutex_init(&mutex, NULL);
+    
+    for(int i = 0; i < totThreads; i++) {
+        args[i] = new thArgs {
+            i,
+            vec,
+            res,
+            vecSizePerTh*i,
+            vecSizePerTh*(i+1),
+            tot
+        };
+
+        pthread_create(&th[i], NULL, multiSearch, args[i]);
+    }
+
+    for(int i = 0; i < totThreads; i++) {
+        pthread_join(th[i], NULL);
+    }
+}
+
+int main(int argc, char *argv[]) {
     double start_time, end_time; /* start and end times */
+
+    int workers = atoi(argv[1]);
 
     vector<string> vec;
     vector<string> result;
@@ -96,16 +159,11 @@ int main() {
 
     toLowerCase(vec);
 
-
     int total = 0;
 
     start_time = read_timer();
 
-    for(int i = 0; i < vec.size(); i++) {
-        if(palindromCheck(vec.at(i), vec, result)) {
-            total++;
-        }
-    }
+    multiThreadSearch(vec, result, workers, total);
 
     end_time = read_timer();
 
