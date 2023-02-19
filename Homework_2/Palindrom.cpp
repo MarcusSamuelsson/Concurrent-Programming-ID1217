@@ -133,8 +133,8 @@ int main(int argc, char *argv[]) {
         for(int i = 1; i <= workers; i++) {
             double totalForThread = 0;
 
-            for (int j = 0; j < 10; j++) {
-                omp_set_num_threads(i*2);
+            for (int j = 0; j < 2; j++) {
+                omp_set_num_threads(i);
 
                 double start_time = omp_get_wtime();
 
