@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
     }
 
     for(int i = 0; i < workers; i++) {
-        args[i+workers] = new thArgs {
+        args[i+workers-2] = new thArgs {
             (i+1+workers),
             (i+1),
             "Woman"
